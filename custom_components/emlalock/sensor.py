@@ -67,6 +67,7 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
 
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     _attr_name = "Time remaining"
+    _attr_translation_key = "time_remaining"
 
     @property
     def native_value(self):
@@ -93,15 +94,29 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     @property
     def extra_state_attributes(self):
         s = _session(self.coordinator)
-        return {k: s.get(k) for k in (
-            "chastitysessionid", "wearerid", "holderid", "status", "duration",
-            "minduration", "maxduration", "requirements", "startdate", "enddate",
-            "timeinlock", "lastverification", "incleaning",
-        )}
+        return {
+            k: s.get(k)
+            for k in (
+                "chastitysessionid",
+                "wearerid",
+                "holderid",
+                "status",
+                "duration",
+                "minduration",
+                "maxduration",
+                "requirements",
+                "startdate",
+                "enddate",
+                "timeinlock",
+                "lastverification",
+                "incleaning",
+            )
+        }
 
 
 class EmlaLockSession(EmlaLockBase, SensorEntity):
     _attr_name = "Session"
+    _attr_translation_key = "session"
 
     @property
     def native_value(self):
@@ -110,6 +125,7 @@ class EmlaLockSession(EmlaLockBase, SensorEntity):
 
 class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
     _attr_name = "Requirement links"
+    _attr_translation_key = "requirement_links"
     _attr_native_unit_of_measurement = "links"
     _attr_state_class = SensorStateClass.MEASUREMENT
 
@@ -120,6 +136,7 @@ class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
 
 class EmlaLockMaximum(EmlaLockBase, SensorEntity):
     _attr_name = "Maximum duration"
+    _attr_translation_key = "maximum_duration"
 
     @property
     def native_value(self):
@@ -128,6 +145,7 @@ class EmlaLockMaximum(EmlaLockBase, SensorEntity):
 
 class EmlaLockMinimum(EmlaLockBase, SensorEntity):
     _attr_name = "Minimum duration"
+    _attr_translation_key = "minimum_duration"
 
     @property
     def native_value(self):
@@ -136,13 +154,16 @@ class EmlaLockMinimum(EmlaLockBase, SensorEntity):
 
 class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
     _attr_name = "Time passed"
+    _attr_translation_key = "time_passed"
 
     @property
     def native_value(self):
         start = _timestamp(_session(self.coordinator).get("startdate"))
         if start is None:
             return None
-        return _format_duration(max(0, int(datetime.now(timezone.utc).timestamp() - start)))
+        return _format_duration(
+            max(0, int(datetime.now(timezone.utc).timestamp() - start))
+        )
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -162,13 +183,17 @@ class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
-    coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
+    coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id][
+        "coordinator"
+    ]
     user_id = entry.data[CONF_USER_ID]
-    async_add_entities([
-        EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
-        EmlaLockSession(coordinator, user_id, "session"),
-        EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
-        EmlaLockMaximum(coordinator, user_id, "maximum"),
-        EmlaLockMinimum(coordinator, user_id, "minimum"),
-        EmlaLockTimeInLock(coordinator, user_id, "time_passed"),
-    ])
+    async_add_entities(
+        [
+            EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
+            EmlaLockSession(coordinator, user_id, "session"),
+            EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
+            EmlaLockMaximum(coordinator, user_id, "maximum"),
+            EmlaLockMinimum(coordinator, user_id, "minimum"),
+            EmlaLockTimeInLock(coordinator, user_id, "time_passed"),
+        ]
+    )
