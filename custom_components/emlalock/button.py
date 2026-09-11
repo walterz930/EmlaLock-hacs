@@ -24,9 +24,11 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
 
     @property
     def available(self) -> bool:
-        return super().available and not self._subtract or super().available and bool(
-            self.coordinator.api.holder_api_key
-        )
+        if not super().available:
+            return False
+        if self._subtract and not self.coordinator.api.holder_api_key:
+            return False
+        return True
 
     async def async_press(self) -> None:
         endpoint = "sub" if self._subtract else "add"
@@ -43,9 +45,7 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
 
 
 async def async_setup_entry(
-    hass: HomeAssistant,
-    entry: ConfigEntry,
-    async_add_entities: AddEntitiesCallback,
+    hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
     has_holder_key = bool(entry.data.get(CONF_HOLDER_API_KEY))
