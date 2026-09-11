@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import re
+
 import voluptuous as vol
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
@@ -10,23 +12,43 @@ from .api import EmlaLockApi, EmlaLockApiError
 from .const import CONF_API_KEY, CONF_HOLDER_API_KEY, CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
-PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
+PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 
-# EmlaLock accepts seconds or short terms such as W1D2H3M4S5 for time values.
-TIME_VALUE = vol.Any(vol.Coerce(int), cv.string)
+_SHORT_TIME_RE = re.compile(r"^(?:W\d+|D\d+|H\d+|M\d+|S\d+)+$", re.IGNORECASE)
+
+
+def _time_value(value):
+    """Validate an EmlaLock time value: seconds or documented short terms."""
+    if isinstance(value, bool):
+        raise vol.Invalid("Time value must be a number or EmlaLock short-term string")
+    if isinstance(value, int):
+        if value < 0:
+            raise vol.Invalid("Time value cannot be negative")
+        return value
+    if isinstance(value, str):
+        value = value.strip()
+        if value.isdigit():
+            return int(value)
+        if not _SHORT_TIME_RE.fullmatch(value):
+            raise vol.Invalid("Invalid EmlaLock time value")
+        return value.upper()
+    raise vol.Invalid("Time value must be a number or EmlaLock short-term string")
+
+
+TIME_VALUE = _time_value
 
 SERVICE_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
         vol.Required("value"): TIME_VALUE,
-        vol.Optional("text", default=""): cv.string,
+        vol.Optional("text", default=""): vol.All(cv.string, vol.Length(max=49)),
     }
 )
 
 REQUIREMENT_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
-        vol.Required("value"): vol.Coerce(int),
+        vol.Required("value"): vol.All(vol.Coerce(int), vol.Range(min=0)),
     }
 )
 
@@ -35,15 +57,15 @@ TIME_RANDOM_SCHEMA = vol.Schema(
         vol.Required("entry_id"): cv.string,
         vol.Required("from_value"): TIME_VALUE,
         vol.Required("to_value"): TIME_VALUE,
-        vol.Optional("text", default=""): cv.string,
+        vol.Optional("text", default=""): vol.All(cv.string, vol.Length(max=49)),
     }
 )
 
 REQUIREMENT_RANDOM_SCHEMA = vol.Schema(
     {
         vol.Required("entry_id"): cv.string,
-        vol.Required("from_value"): vol.Coerce(int),
-        vol.Required("to_value"): vol.Coerce(int),
+        vol.Required("from_value"): vol.All(vol.Coerce(int), vol.Range(min=0)),
+        vol.Required("to_value"): vol.All(vol.Coerce(int), vol.Range(min=0)),
     }
 )
 
@@ -53,12 +75,12 @@ TIME_ENDPOINTS_WITH_TEXT = {"add", "sub", "addrandom", "subrandom"}
 async def async_setup(hass: HomeAssistant, config):
     hass.data.setdefault(DOMAIN, {"entries": {}, "services_registered": False})
     if not hass.data[DOMAIN]["services_registered"]:
+
         async def run_action(call: ServiceCall, endpoint: str, random: bool = False):
             entry = hass.data[DOMAIN]["entries"].get(call.data["entry_id"])
             if not entry:
                 raise vol.Invalid("Unknown EmlaLock entry")
 
-            api = entry["action_api"]
             try:
                 if random:
                     params = {
@@ -66,14 +88,15 @@ async def async_setup(hass: HomeAssistant, config):
                         "to": call.data["to_value"],
                     }
                     if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
-                        params["text"] = call.data["text"][:49]
+                        params["text"] = call.data["text"]
                 else:
                     params = {"value": call.data["value"]}
                     if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
-                        params["text"] = call.data["text"][:49]
+                        params["text"] = call.data["text"]
 
-                result = await api.action(endpoint, **params)
-                # Documented actions return the same user/session shape as /info.
+                result = await entry["action_api"].action(endpoint, **params)
+                # EmlaLock documents successful action responses as the same
+                # user/session object returned by /info.
                 entry["coordinator"].async_set_updated_data(result)
             except EmlaLockApiError as err:
                 raise vol.Invalid(str(err)) from err
@@ -90,8 +113,10 @@ async def async_setup(hass: HomeAssistant, config):
         }
 
         for service_name, (endpoint, random, schema) in service_schemas.items():
+
             async def handler(call, ep=endpoint, is_random=random):
                 await run_action(call, ep, is_random)
+
             hass.services.async_register(DOMAIN, service_name, handler, schema=schema)
 
         random_schemas = {
@@ -106,8 +131,10 @@ async def async_setup(hass: HomeAssistant, config):
         }
 
         for service_name, (endpoint, schema) in random_schemas.items():
+
             async def random_handler(call, ep=endpoint):
                 await run_action(call, ep, True)
+
             hass.services.async_register(DOMAIN, service_name, random_handler, schema=schema)
 
         hass.data[DOMAIN]["services_registered"] = True
@@ -116,15 +143,11 @@ async def async_setup(hass: HomeAssistant, config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = entry.data
-    user_id = data[CONF_USER_ID]
-    api_key = data[CONF_API_KEY]
-    holder_api_key = data.get(CONF_HOLDER_API_KEY)
-
     action_api = EmlaLockApi(
         hass,
-        user_id,
-        api_key,
-        holder_api_key=holder_api_key,
+        data[CONF_USER_ID],
+        data[CONF_API_KEY],
+        holder_api_key=data.get(CONF_HOLDER_API_KEY),
     )
 
     coordinator = EmlaLockCoordinator(hass, action_api)
