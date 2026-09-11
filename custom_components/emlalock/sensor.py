@@ -79,7 +79,7 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self._unsub_timer = async_track_time_interval(
-            self.hass, self._async_update_time, timedelta(seconds=1)
+            self.hass, self._async_update_time, timedelta(minutes=1)
         )
 
     async def async_will_remove_from_hass(self) -> None:
@@ -147,7 +147,7 @@ class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
         self._unsub_timer = async_track_time_interval(
-            self.hass, self._async_update_time, timedelta(seconds=1)
+            self.hass, self._async_update_time, timedelta(minutes=1)
         )
 
     async def async_will_remove_from_hass(self) -> None:
