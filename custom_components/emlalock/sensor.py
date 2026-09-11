@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
@@ -38,6 +38,13 @@ def _timestamp(value):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.timestamp()
+
+
+def _session_datetime(coordinator, key):
+    timestamp = _timestamp(_session(coordinator).get(key))
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def _duration_seconds(value):
@@ -136,6 +143,26 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
         self.async_write_ha_state()
 
 
+class EmlaLockStartDate(EmlaLockBase, SensorEntity):
+    _attr_name = "Start date"
+    _attr_translation_key = "start_date"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def native_value(self):
+        return _session_datetime(self.coordinator, "startdate")
+
+
+class EmlaLockEndDate(EmlaLockBase, SensorEntity):
+    _attr_name = "End date"
+    _attr_translation_key = "end_date"
+    _attr_device_class = SensorDeviceClass.TIMESTAMP
+
+    @property
+    def native_value(self):
+        return _session_datetime(self.coordinator, "enddate")
+
+
 class EmlaLockSession(EmlaLockBase, SensorEntity):
     _attr_name = "Session"
     _attr_translation_key = "session"
@@ -210,6 +237,8 @@ async def async_setup_entry(
     async_add_entities(
         [
             EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
+            EmlaLockStartDate(coordinator, user_id, "start_date"),
+            EmlaLockEndDate(coordinator, user_id, "end_date"),
             EmlaLockSession(coordinator, user_id, "session"),
             EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
             EmlaLockMaximum(coordinator, user_id, "maximum"),
