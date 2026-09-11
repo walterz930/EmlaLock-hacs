@@ -60,7 +60,6 @@ async def async_setup_entry(
 
     entities = []
     for value, label in (
-        (900, "15 minutes"),
         (3600, "1 hour"),
         (86400, "1 day"),
     ):
