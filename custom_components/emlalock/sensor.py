@@ -13,6 +13,10 @@ from .const import CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 
+_MONTH_SECONDS = 30 * 86400
+_WEEK_SECONDS = 7 * 86400
+
+
 def _session(coordinator):
     return (coordinator.data or {}).get("chastitysession") or {}
 
@@ -37,16 +41,28 @@ def _timestamp(value):
 
 
 def _format_duration(value):
+    """Format a duration as months, weeks, days, hours, minutes, seconds.
+
+    Months are treated as 30 days because the API provides durations in seconds
+    rather than calendar dates, so there is no calendar month to calculate from.
+    """
     if value is None or value == "":
         return None
     try:
         total = max(0, int(float(value)))
     except (TypeError, ValueError):
         return str(value)
-    days, remainder = divmod(total, 86400)
+
+    months, remainder = divmod(total, _MONTH_SECONDS)
+    weeks, remainder = divmod(remainder, _WEEK_SECONDS)
+    days, remainder = divmod(remainder, 86400)
     hours, remainder = divmod(remainder, 3600)
     minutes, seconds = divmod(remainder, 60)
-    return f"{days:02d} {hours:02d} {minutes:02d} {seconds:02d}"
+
+    return (
+        f"{months} Months : {weeks} Weeks : {days} Days : "
+        f"{hours:02d} Hours : {minutes:02d} Minutes : {seconds:02d} Seconds"
+    )
 
 
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
