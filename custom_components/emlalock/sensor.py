@@ -234,13 +234,13 @@ async def async_setup_entry(
     user_id = entry.data[CONF_USER_ID]
     async_add_entities(
         [
-            EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
+            EmlaLockSession(coordinator, user_id, "session"),
             EmlaLockStartDate(coordinator, user_id, "start_date"),
             EmlaLockEndDate(coordinator, user_id, "end_date"),
-            EmlaLockSession(coordinator, user_id, "session"),
-            EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
-            EmlaLockMaximum(coordinator, user_id, "maximum"),
-            EmlaLockMinimum(coordinator, user_id, "minimum"),
             EmlaLockTimeInLock(coordinator, user_id, "time_passed"),
+            EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
+            EmlaLockMinimum(coordinator, user_id, "minimum"),
+            EmlaLockMaximum(coordinator, user_id, "maximum"),
+            EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
         ]
     )
