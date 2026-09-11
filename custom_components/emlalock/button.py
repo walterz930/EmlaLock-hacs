@@ -20,8 +20,8 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         self._subtract = subtract
         self._attr_name = name
         self._attr_unique_id = f"{entry_id}_{name.lower().replace(' ', '_')}"
-        # Keep every action entity visible in Home Assistant. Availability is
-        # used below to block holder-only actions when no holder API key exists.
+        # Keep every button enabled in the entity registry. Permission is
+        # controlled by availability so the full entity set is always shown.
         self._attr_entity_registry_enabled_default = True
 
     @property
@@ -69,4 +69,5 @@ async def async_setup_entry(
                 subtract=True,
             )
         )
+
     async_add_entities(entities)
