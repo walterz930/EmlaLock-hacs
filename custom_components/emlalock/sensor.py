@@ -2,8 +2,9 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from homeassistant.components.sensor import SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
+from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -12,13 +13,15 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
-
-_MONTH_SECONDS = 30 * 86400
 _WEEK_SECONDS = 7 * 86400
 
 
 def _session(coordinator):
     return (coordinator.data or {}).get("chastitysession") or {}
+
+
+def _user(coordinator):
+    return (coordinator.data or {}).get("user") or {}
 
 
 def _timestamp(value):
@@ -40,24 +43,13 @@ def _timestamp(value):
     return parsed.timestamp()
 
 
-def _format_duration(value):
-    """Format a duration as weeks, days, hours, minutes, seconds."""
+def _duration_seconds(value):
     if value is None or value == "":
         return None
     try:
-        total = max(0, int(float(value)))
+        return max(0, int(float(value)))
     except (TypeError, ValueError):
-        return str(value)
-
-    weeks, remainder = divmod(total, _WEEK_SECONDS)
-    days, remainder = divmod(remainder, 86400)
-    hours, remainder = divmod(remainder, 3600)
-    minutes, seconds = divmod(remainder, 60)
-
-    return (
-        f"{weeks} Weeks : {days} Days : {hours:02d} Hours : "
-        f"{minutes:02d} Minutes : {seconds:02d} Seconds"
-    )
+        return None
 
 
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
@@ -69,9 +61,10 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
 
     @property
     def device_info(self):
+        username = _user(self.coordinator).get("username")
         return {
             "identifiers": {(DOMAIN, self.coordinator.api.user_id)},
-            "name": "EmlaLock",
+            "name": f"EmlaLock - {username}" if username else "EmlaLock",
             "manufacturer": "EmlaLock",
         }
 
@@ -79,14 +72,16 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     _attr_name = "Time remaining"
     _attr_translation_key = "time_remaining"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
         end = _timestamp(_session(self.coordinator).get("enddate"))
         if end is None:
             return None
-        remaining = max(0, int(end - datetime.now(timezone.utc).timestamp()))
-        return _format_duration(remaining)
+        return max(0, int(end - datetime.now(timezone.utc).timestamp()))
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -101,28 +96,6 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
 
     async def _async_update_time(self, _now) -> None:
         self.async_write_ha_state()
-
-    @property
-    def extra_state_attributes(self):
-        s = _session(self.coordinator)
-        return {
-            k: s.get(k)
-            for k in (
-                "chastitysessionid",
-                "wearerid",
-                "holderid",
-                "status",
-                "duration",
-                "minduration",
-                "maxduration",
-                "requirements",
-                "startdate",
-                "enddate",
-                "timeinlock",
-                "lastverification",
-                "incleaning",
-            )
-        }
 
 
 class EmlaLockSession(EmlaLockBase, SensorEntity):
@@ -148,33 +121,40 @@ class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
 class EmlaLockMaximum(EmlaLockBase, SensorEntity):
     _attr_name = "Maximum duration"
     _attr_translation_key = "maximum_duration"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
-        return _format_duration(_session(self.coordinator).get("maxduration"))
+        return _duration_seconds(_session(self.coordinator).get("maxduration"))
 
 
 class EmlaLockMinimum(EmlaLockBase, SensorEntity):
     _attr_name = "Minimum duration"
     _attr_translation_key = "minimum_duration"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
-        return _format_duration(_session(self.coordinator).get("minduration"))
+        return _duration_seconds(_session(self.coordinator).get("minduration"))
 
 
 class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
     _attr_name = "Time passed"
     _attr_translation_key = "time_passed"
+    _attr_device_class = SensorDeviceClass.DURATION
+    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
+    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
         start = _timestamp(_session(self.coordinator).get("startdate"))
         if start is None:
             return None
-        return _format_duration(
-            max(0, int(datetime.now(timezone.utc).timestamp() - start))
-        )
+        return max(0, int(datetime.now(timezone.utc).timestamp() - start))
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
