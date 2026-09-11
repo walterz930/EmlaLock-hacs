@@ -95,9 +95,6 @@ async def async_setup(hass: HomeAssistant, config):
                         params["text"] = call.data["text"]
 
                 await entry["action_api"].action(endpoint, **params)
-                # EmlaLock returns the same shape as /info for successful
-                # actions. Refreshing through the coordinator keeps /info as
-                # the single canonical state source for all entities.
                 await entry["coordinator"].async_request_refresh()
             except EmlaLockApiError as err:
                 raise vol.Invalid(str(err)) from err
@@ -108,7 +105,7 @@ async def async_setup(hass: HomeAssistant, config):
             "add_maximum": ("addmaximum", False, SERVICE_SCHEMA),
             "subtract_maximum": ("submaximum", False, SERVICE_SCHEMA),
             "add_minimum": ("addminimum", False, SERVICE_SCHEMA),
-            "subtract_minimum": ("subminimum", False, REQUIREMENT_SCHEMA),
+            "subtract_minimum": ("subminimum", False, SERVICE_SCHEMA),
             "add_requirements": ("addrequirement", False, REQUIREMENT_SCHEMA),
             "subtract_requirements": ("subrequirement", False, REQUIREMENT_SCHEMA),
         }
