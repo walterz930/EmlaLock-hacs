@@ -16,7 +16,7 @@ class EmlaLockConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
 
         if user_input is not None:
             try:
-                await EmlaLockApi(
+                info = await EmlaLockApi(
                     self.hass,
                     user_input[CONF_USER_ID],
                     user_input[CONF_API_KEY],
@@ -31,12 +31,13 @@ class EmlaLockConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
             except EmlaLockApiError:
                 errors["base"] = "invalid_auth"
             else:
-                user = user_input[CONF_USER_ID]
+                user = info.get("user", {})
+                username = user.get("username", user_input[CONF_USER_ID])
                 role = "holder" if user_input.get(CONF_HOLDER_API_KEY) else "wearer"
-                await self.async_set_unique_id(f"{user}-{role}")
+                await self.async_set_unique_id(f"{user.get('userid', user_input[CONF_USER_ID])}-{role}")
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=f"EmlaLock - {user} ({role})",
+                    title=f"EmlaLock - {username} ({role})",
                     data=user_input,
                 )
 
