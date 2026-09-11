@@ -42,14 +42,6 @@
       "session_active": {
         "name": "Session active"
       }
-    },
-    "button": {
-      "add_time": {
-        "name": "Add {label}"
-      },
-      "subtract_time": {
-        "name": "Remove {label}"
-      }
     }
   }
 }
