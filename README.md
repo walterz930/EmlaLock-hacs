@@ -7,14 +7,13 @@ A custom Home Assistant integration for the [EmlaLock](https://emlalock.com) API
 - Easy setup through the Home Assistant UI.
 - Supports multiple independent EmlaLock accounts/config entries.
 - Supports wearer access and optional holder access.
-- Session status and session information sensors.
-- Live **Time remaining** and **Time passed** sensors.
-- Minimum and maximum duration sensors.
+- Binary **Session active** state plus session information sensors.
+- Native Home Assistant duration sensors for **Time remaining**, **Time passed**, **Minimum duration**, and **Maximum duration**.
 - Requirement-link sensor.
 - Add/remove time buttons for **1 hour** and **1 day**.
 - Home Assistant services for changing time, minimum/maximum duration, and requirement links.
 - Random-value services for minimum/maximum duration and requirement links.
-- Uses the EmlaLock API as the source of truth for actions and permissions.
+- Uses the documented EmlaLock API as the source of truth for actions, permissions, and errors.
 
 ## Installation
 
@@ -43,22 +42,23 @@ You will be asked for:
 
 - **User ID** — your EmlaLock user ID.
 - **API key** — your EmlaLock API key.
-- **Holder API key** — optional. Add this when holder-authenticated actions are required.
+- **Holder API key** — optional. This is used for documented holder-authorized subtract operations.
 
-The integration validates the credentials during setup. Each configured account has its own Home Assistant device and entities.
+The integration validates the wearer credentials against `/info` during setup. Each configured account has its own Home Assistant device and entities.
 
 ## Sensors
 
-The integration provides sensors for:
+The integration provides:
 
-- **Session** — whether a session is active.
-- **Time remaining** — remaining session time, displayed as `DD HH MM SS`.
-- **Time passed** — elapsed session time, displayed as `DD HH MM SS`.
-- **Minimum duration** — configured minimum duration.
-- **Maximum duration** — configured maximum duration.
+- **Session** — `active` or `inactive`.
+- **Session active** — Home Assistant binary state for whether the EmlaLock session is active.
+- **Time remaining** — remaining session time as a native Home Assistant duration in seconds.
+- **Time passed** — elapsed session time as a native Home Assistant duration in seconds.
+- **Minimum duration** — configured minimum duration as a native duration.
+- **Maximum duration** — configured maximum duration as a native duration.
 - **Requirement links** — current requirement-link count.
 
-Additional session information is available as attributes on the **Time remaining** sensor, including session ID, wearer, holder, status, start/end dates, duration, requirements, verification status, and cleaning status.
+The EmlaLock `/info` response remains available through entity state and attributes where useful, including session ID, wearer, holder, status, start/end dates, duration, requirements, verification, cleaning, and other session data.
 
 ## Buttons
 
@@ -69,7 +69,7 @@ The integration provides four time-action buttons:
 - **Add 1 day**
 - **Remove 1 day**
 
-Remove buttons require holder access. The buttons send the current session start/end dates to the EmlaLock action API when available.
+Remove buttons are only enabled when holder access is configured. Buttons send only parameters documented by the corresponding EmlaLock endpoint.
 
 ## Services
 
@@ -77,12 +77,16 @@ Remove buttons require holder access. The buttons send the current session start
 
 - `emlalock.add_time`
 - `emlalock.subtract_time`
+- `emlalock.add_time_random`
+- `emlalock.subtract_time_random`
 
-Single-value services use:
+Single-value time services use:
 
 - `entry_id`
 - `value`
-- optional `text` for `add_time`
+- optional `text` for the time endpoints that support it
+
+Time values can be either seconds or EmlaLock short terms such as `W1D2H3M4S5`.
 
 ### Maximum duration
 
@@ -111,7 +115,9 @@ Random services use:
 - `from_value`
 - `to_value`
 
-The EmlaLock server remains authoritative. If an action is not permitted, the API error is returned instead of the integration pretending the action succeeded.
+Requirement values are non-negative integers, matching the documented API.
+
+The EmlaLock server remains authoritative. API errors such as `WrongAPIKey`, `NoActiveSession`, `SessionHasNoHolder`, `HolderNotFound`, and `InvalidTimeValue` are surfaced instead of being silently treated as successful actions.
 
 ## API
 
@@ -119,7 +125,7 @@ The integration communicates with the EmlaLock API at:
 
 `https://api.emlalock.com`
 
-It currently uses the EmlaLock information and action endpoints for session data, time, minimum/maximum duration, and requirement links.
+The implementation follows the documented `/info`, time, maximum-duration, minimum-duration, and requirement-link endpoints. Holder API keys are only sent on documented holder-authorized subtract operations.
 
 ## Requirements
 
