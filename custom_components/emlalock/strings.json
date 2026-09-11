@@ -3,25 +3,16 @@
     "step": {
       "user": {
         "title": "Connect EmlaLock",
-        "description": "Enter the EmlaLock credentials and choose which account you want to add.",
+        "description": "Enter the wearer User ID and API key. Leave Holder API key empty for a wearer account, or enter it to use holder access.",
         "data": {
           "user_id": "User ID",
           "api_key": "API key",
-          "role": "Account type"
-        }
-      },
-      "holder": {
-        "title": "Connect wearer account",
-        "description": "Enter the wearer credentials used to authenticate holder actions.",
-        "data": {
-          "wearer_user_id": "Wearer user ID",
-          "wearer_api_key": "Wearer API key"
+          "holder_api_key": "Holder API key"
         }
       }
     },
     "error": {
-      "invalid_auth": "The EmlaLock credentials were rejected.",
-      "invalid_wearer_auth": "The wearer credentials were rejected."
+      "invalid_auth": "The EmlaLock credentials were rejected."
     }
   }
 }
