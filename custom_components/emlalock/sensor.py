@@ -1,11 +1,11 @@
 from __future__ import annotations
 
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timezone
 
 from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
-from homeassistant.helpers.event import async_track_time_interval
+from homeassistant.helpers.event import async_track_time_change
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -78,8 +78,8 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self._unsub_timer = async_track_time_interval(
-            self.hass, self._async_update_time, timedelta(minutes=1)
+        self._unsub_timer = async_track_time_change(
+            self.hass, self._async_update_time, second=0
         )
 
     async def async_will_remove_from_hass(self) -> None:
@@ -146,8 +146,8 @@ class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
-        self._unsub_timer = async_track_time_interval(
-            self.hass, self._async_update_time, timedelta(minutes=1)
+        self._unsub_timer = async_track_time_change(
+            self.hass, self._async_update_time, second=0
         )
 
     async def async_will_remove_from_hass(self) -> None:
