@@ -2,9 +2,8 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
-from homeassistant.const import UnitOfTime
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
@@ -50,6 +49,21 @@ def _duration_seconds(value):
         return None
 
 
+def _format_duration(seconds):
+    """Display duration using hours and smaller units, never raw seconds."""
+    if seconds is None:
+        return None
+    seconds = max(0, int(seconds))
+    hours, remainder = divmod(seconds, 3600)
+    minutes, seconds = divmod(remainder, 60)
+
+    if hours:
+        return f"{hours}h {minutes}m {seconds}s"
+    if minutes:
+        return f"{minutes}m {seconds}s"
+    return f"{seconds}s"
+
+
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
     _attr_has_entity_name = True
 
@@ -70,16 +84,13 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     _attr_name = "Time remaining"
     _attr_translation_key = "time_remaining"
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
         end = _timestamp(_session(self.coordinator).get("enddate"))
         if end is None:
             return None
-        return max(0, int(end - datetime.now(timezone.utc).timestamp()))
+        return _format_duration(end - datetime.now(timezone.utc).timestamp())
 
     @property
     def extra_state_attributes(self):
@@ -148,40 +159,31 @@ class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
 class EmlaLockMaximum(EmlaLockBase, SensorEntity):
     _attr_name = "Maximum duration"
     _attr_translation_key = "maximum_duration"
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
-        return _duration_seconds(_session(self.coordinator).get("maxduration"))
+        return _format_duration(_duration_seconds(_session(self.coordinator).get("maxduration")))
 
 
 class EmlaLockMinimum(EmlaLockBase, SensorEntity):
     _attr_name = "Minimum duration"
     _attr_translation_key = "minimum_duration"
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
-        return _duration_seconds(_session(self.coordinator).get("minduration"))
+        return _format_duration(_duration_seconds(_session(self.coordinator).get("minduration")))
 
 
 class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
     _attr_name = "Time passed"
     _attr_translation_key = "time_passed"
-    _attr_device_class = SensorDeviceClass.DURATION
-    _attr_native_unit_of_measurement = UnitOfTime.SECONDS
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
         start = _timestamp(_session(self.coordinator).get("startdate"))
         if start is None:
             return None
-        return max(0, int(datetime.now(timezone.utc).timestamp() - start))
+        return _format_duration(datetime.now(timezone.utc).timestamp() - start)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
