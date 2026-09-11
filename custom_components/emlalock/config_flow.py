@@ -15,29 +15,55 @@ class EmlaLockConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
         errors = {}
 
         if user_input is not None:
+            user_input[CONF_USER_ID] = user_input[CONF_USER_ID].strip()
+            user_input[CONF_API_KEY] = user_input[CONF_API_KEY].strip()
+            if user_input.get(CONF_HOLDER_API_KEY):
+                user_input[CONF_HOLDER_API_KEY] = user_input[CONF_HOLDER_API_KEY].strip()
+
             try:
                 info = await EmlaLockApi(
                     self.hass,
                     user_input[CONF_USER_ID],
                     user_input[CONF_API_KEY],
                 ).info()
-                if user_input.get(CONF_HOLDER_API_KEY):
-                    await EmlaLockApi(
-                        self.hass,
-                        user_input[CONF_USER_ID],
-                        user_input[CONF_API_KEY],
-                        holder_api_key=user_input[CONF_HOLDER_API_KEY],
-                    ).info()
             except EmlaLockApiError:
                 errors["base"] = "invalid_auth"
             else:
                 user = info.get("user", {})
                 username = user.get("username", user_input[CONF_USER_ID])
-                role = "holder" if user_input.get(CONF_HOLDER_API_KEY) else "wearer"
-                await self.async_set_unique_id(f"{user.get('userid', user_input[CONF_USER_ID])}-{role}")
+                userid = str(user.get("userid", user_input[CONF_USER_ID]))
+
+                # One EmlaLock account gets one config entry. Do not create
+                # separate wearer/holder entity sets for the same account.
+                existing = next(
+                    (
+                        entry
+                        for entry in self.hass.config_entries.async_entries(DOMAIN)
+                        if str(entry.data.get(CONF_USER_ID, "")) == userid
+                    ),
+                    None,
+                )
+                if existing:
+                    data = dict(existing.data)
+                    data[CONF_USER_ID] = user_input[CONF_USER_ID]
+                    data[CONF_API_KEY] = user_input[CONF_API_KEY]
+                    if user_input.get(CONF_HOLDER_API_KEY):
+                        data[CONF_HOLDER_API_KEY] = user_input[CONF_HOLDER_API_KEY]
+                    else:
+                        data.pop(CONF_HOLDER_API_KEY, None)
+
+                    self.hass.config_entries.async_update_entry(
+                        existing,
+                        title=f"EmlaLock - {username}",
+                        data=data,
+                    )
+                    await self.hass.config_entries.async_reload(existing.entry_id)
+                    return self.async_abort(reason="already_configured")
+
+                await self.async_set_unique_id(userid)
                 self._abort_if_unique_id_configured()
                 return self.async_create_entry(
-                    title=f"EmlaLock - {username} ({role})",
+                    title=f"EmlaLock - {username}",
                     data=user_input,
                 )
 
