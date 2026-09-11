@@ -20,7 +20,6 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         self._value = value
         self._subtract = subtract
         self._attr_name = name
-        self._attr_translation_key = "subtract_time" if subtract else "add_time"
         self._attr_unique_id = f"{user_id}_{name.lower().replace(' ', '_')}"
 
     @property
