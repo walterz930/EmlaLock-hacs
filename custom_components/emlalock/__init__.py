@@ -57,7 +57,6 @@ TIME_RANDOM_SCHEMA = vol.Schema(
         vol.Required("entry_id"): cv.string,
         vol.Required("from_value"): TIME_VALUE,
         vol.Required("to_value"): TIME_VALUE,
-        vol.Optional("text", default=""): vol.All(cv.string, vol.Length(max=49)),
     }
 )
 
@@ -69,7 +68,7 @@ REQUIREMENT_RANDOM_SCHEMA = vol.Schema(
     }
 )
 
-TIME_ENDPOINTS_WITH_TEXT = {"add", "sub", "addrandom", "subrandom"}
+TIME_ENDPOINTS_WITH_TEXT = {"add", "sub"}
 
 
 async def async_setup(hass: HomeAssistant, config):
@@ -87,8 +86,6 @@ async def async_setup(hass: HomeAssistant, config):
                         "from": call.data["from_value"],
                         "to": call.data["to_value"],
                     }
-                    if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
-                        params["text"] = call.data["text"]
                 else:
                     params = {"value": call.data["value"]}
                     if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
