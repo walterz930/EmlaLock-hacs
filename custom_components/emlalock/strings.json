@@ -3,7 +3,7 @@
     "step": {
       "user": {
         "title": "Connect EmlaLock",
-        "description": "Enter the wearer User ID and API key. Leave Holder API key empty for a wearer account, or enter it to use holder access.",
+        "description": "Enter the EmlaLock User ID and API key. The optional Holder API key is used for documented holder-authorized subtract operations.",
         "data": {
           "user_id": "User ID",
           "api_key": "API key",
@@ -12,7 +12,44 @@
       }
     },
     "error": {
-      "invalid_auth": "The EmlaLock credentials were rejected."
+      "invalid_auth": "The EmlaLock credentials were rejected.",
+      "cannot_connect": "Unable to connect to EmlaLock.",
+      "unknown": "An unexpected EmlaLock API error occurred."
+    }
+  },
+  "entity": {
+    "sensor": {
+      "time_remaining": {
+        "name": "Time remaining"
+      },
+      "session": {
+        "name": "Session"
+      },
+      "requirement_links": {
+        "name": "Requirement links"
+      },
+      "maximum_duration": {
+        "name": "Maximum duration"
+      },
+      "minimum_duration": {
+        "name": "Minimum duration"
+      },
+      "time_passed": {
+        "name": "Time passed"
+      }
+    },
+    "binary_sensor": {
+      "session_active": {
+        "name": "Session active"
+      }
+    },
+    "button": {
+      "add_time": {
+        "name": "Add {label}"
+      },
+      "subtract_time": {
+        "name": "Remove {label}"
+      }
     }
   }
 }
