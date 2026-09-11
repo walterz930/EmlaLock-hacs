@@ -135,7 +135,7 @@ class EmlaLockMinimum(EmlaLockBase, SensorEntity):
 
 
 class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
-    _attr_name = "Time in lock"
+    _attr_name = "Time passed"
 
     @property
     def native_value(self):
@@ -153,5 +153,5 @@ async def async_setup_entry(
         EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
         EmlaLockMaximum(coordinator, user_id, "maximum"),
         EmlaLockMinimum(coordinator, user_id, "minimum"),
-        EmlaLockTimeInLock(coordinator, user_id, "time_in_lock"),
+        EmlaLockTimeInLock(coordinator, user_id, "time_passed"),
     ])
