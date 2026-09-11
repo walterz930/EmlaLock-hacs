@@ -14,15 +14,21 @@ from .coordinator import EmlaLockCoordinator
 class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry_id, name, value, subtract=False):
+    def __init__(self, coordinator, user_id, name, value, subtract=False):
         super().__init__(coordinator)
         self._value = value
         self._subtract = subtract
         self._attr_name = name
-        self._attr_unique_id = f"{entry_id}_{name.lower().replace(' ', '_')}"
-        # Keep every button enabled in the entity registry. Permission is
-        # controlled by availability so the full entity set is always shown.
+        self._attr_unique_id = f"{user_id}_{name.lower().replace(' ', '_')}"
         self._attr_entity_registry_enabled_default = True
+
+    @property
+    def device_info(self):
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.api.user_id)},
+            "name": "EmlaLock",
+            "manufacturer": "EmlaLock",
+        }
 
     @property
     def available(self) -> bool:
@@ -50,6 +56,7 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
+    user_id = entry.data["user_id"]
 
     entities = []
     for value, label in (
@@ -58,12 +65,12 @@ async def async_setup_entry(
         (86400, "1 day"),
     ):
         entities.append(
-            EmlaLockActionButton(coordinator, entry.entry_id, f"Add {label}", value)
+            EmlaLockActionButton(coordinator, user_id, f"Add {label}", value)
         )
         entities.append(
             EmlaLockActionButton(
                 coordinator,
-                entry.entry_id,
+                user_id,
                 f"Remove {label}",
                 value,
                 subtract=True,
