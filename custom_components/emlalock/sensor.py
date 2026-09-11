@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
 
-from homeassistant.components.sensor import SensorDeviceClass, SensorEntity, SensorStateClass
+from homeassistant.components.sensor import SensorEntity, SensorStateClass
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
 from homeassistant.helpers.event import async_track_time_interval
@@ -38,13 +38,6 @@ def _timestamp(value):
     if parsed.tzinfo is None:
         parsed = parsed.replace(tzinfo=timezone.utc)
     return parsed.timestamp()
-
-
-def _session_datetime(coordinator, key):
-    timestamp = _timestamp(_session(coordinator).get(key))
-    if timestamp is None:
-        return None
-    return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
 def _format_timestamp(value):
@@ -153,29 +146,19 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
 class EmlaLockStartDate(EmlaLockBase, SensorEntity):
     _attr_name = "Start date"
     _attr_translation_key = "start_date"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     @property
     def native_value(self):
-        return _session_datetime(self.coordinator, "startdate")
-
-    @property
-    def extra_state_attributes(self):
-        return {"formatted": _format_timestamp(_session(self.coordinator).get("startdate"))}
+        return _format_timestamp(_session(self.coordinator).get("startdate"))
 
 
 class EmlaLockEndDate(EmlaLockBase, SensorEntity):
     _attr_name = "End date"
     _attr_translation_key = "end_date"
-    _attr_device_class = SensorDeviceClass.TIMESTAMP
 
     @property
     def native_value(self):
-        return _session_datetime(self.coordinator, "enddate")
-
-    @property
-    def extra_state_attributes(self):
-        return {"formatted": _format_timestamp(_session(self.coordinator).get("enddate"))}
+        return _format_timestamp(_session(self.coordinator).get("enddate"))
 
 
 class EmlaLockSession(EmlaLockBase, SensorEntity):
