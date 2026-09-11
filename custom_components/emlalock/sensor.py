@@ -17,6 +17,25 @@ def _session(coordinator):
     return (coordinator.data or {}).get("chastitysession") or {}
 
 
+def _timestamp(value):
+    if value is None or value == "":
+        return None
+    try:
+        return float(value)
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    if text.endswith("Z"):
+        text = text[:-1] + "+00:00"
+    try:
+        parsed = datetime.fromisoformat(text)
+    except ValueError:
+        return None
+    if parsed.tzinfo is None:
+        parsed = parsed.replace(tzinfo=timezone.utc)
+    return parsed.timestamp()
+
+
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
     _attr_has_entity_name = True
 
@@ -35,15 +54,10 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
 
     @property
     def native_value(self):
-        end = _session(self.coordinator).get("enddate")
-        if not end:
+        end = _timestamp(_session(self.coordinator).get("enddate"))
+        if end is None:
             return None
-
-        try:
-            remaining = max(0, int(float(end) - datetime.now(timezone.utc).timestamp()))
-        except (TypeError, ValueError):
-            return None
-
+        remaining = max(0, int(end - datetime.now(timezone.utc).timestamp()))
         days, remainder = divmod(remaining, 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
@@ -66,24 +80,11 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     @property
     def extra_state_attributes(self):
         s = _session(self.coordinator)
-        return {
-            k: s.get(k)
-            for k in (
-                "chastitysessionid",
-                "wearerid",
-                "holderid",
-                "status",
-                "duration",
-                "minduration",
-                "maxduration",
-                "requirements",
-                "startdate",
-                "enddate",
-                "timeinlock",
-                "lastverification",
-                "incleaning",
-            )
-        }
+        return {k: s.get(k) for k in (
+            "chastitysessionid", "wearerid", "holderid", "status", "duration",
+            "minduration", "maxduration", "requirements", "startdate", "enddate",
+            "timeinlock", "lastverification", "incleaning",
+        )}
 
 
 class EmlaLockSession(EmlaLockBase, SensorEntity):
