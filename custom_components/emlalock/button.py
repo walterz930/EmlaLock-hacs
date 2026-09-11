@@ -7,7 +7,7 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import EmlaLockApiError
-from .const import DOMAIN
+from .const import CONF_HOLDER_API_KEY, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 
@@ -24,18 +24,33 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
     async def async_press(self):
         endpoint = "sub" if self._subtract else "add"
         try:
-            data = await self.coordinator.api.action(endpoint, value=self._value, text="Home Assistant")
+            data = await self.coordinator.api.action(
+                endpoint, value=self._value, text="Home Assistant"
+            )
             self.coordinator.async_set_updated_data(data)
         except EmlaLockApiError:
-            # The API is authoritative about whether the configured account may
-            # perform this action; refresh so the entity reflects the new state.
             await self.coordinator.async_request_refresh()
 
 
-async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback):
+async def async_setup_entry(
+    hass: HomeAssistant,
+    entry: ConfigEntry,
+    async_add_entities: AddEntitiesCallback,
+):
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
+
+    # Only holder-authenticated entries can change the lock timer.
+    if not entry.data.get(CONF_HOLDER_API_KEY):
+        return
+
     entities = []
     for value, label in ((900, "15 minutes"), (3600, "1 hour"), (86400, "1 day")):
-        entities.append(EmlaLockActionButton(coordinator, entry.entry_id, f"Add {label}", value))
-        entities.append(EmlaLockActionButton(coordinator, entry.entry_id, f"Subtract {label}", value, True))
+        entities.append(
+            EmlaLockActionButton(coordinator, entry.entry_id, f"Add {label}", value)
+        )
+        entities.append(
+            EmlaLockActionButton(
+                coordinator, entry.entry_id, f"Remove {label}", value, True
+            )
+        )
     async_add_entities(entities)
