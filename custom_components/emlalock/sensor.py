@@ -134,6 +134,56 @@ class EmlaLockMinimum(EmlaLockBase, SensorEntity):
         return _format_duration(_session(self.coordinator).get("minduration"))
 
 
+class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
+    _attr_name = "Time in lock"
+
+    @property
+    def native_value(self):
+        return _format_duration(_session(self.coordinator).get("timeinlock"))
+
+
+class EmlaLockPlayedGames(EmlaLockBase, SensorEntity):
+    _attr_name = "Played games"
+    _attr_native_unit_of_measurement = "games"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self):
+        return _session(self.coordinator).get("playedgames")
+
+
+class EmlaLockCleanings(EmlaLockBase, SensorEntity):
+    _attr_name = "Cleanings"
+    _attr_native_unit_of_measurement = "cleanings"
+    _attr_state_class = SensorStateClass.MEASUREMENT
+
+    @property
+    def native_value(self):
+        return _session(self.coordinator).get("cleanings")
+
+
+class EmlaLockVerification(EmlaLockBase, SensorEntity):
+    _attr_name = "Last verification"
+
+    @property
+    def native_value(self):
+        value = _timestamp(_session(self.coordinator).get("lastverification"))
+        if value is None or value <= 0:
+            return None
+        return datetime.fromtimestamp(value, tz=timezone.utc)
+
+
+class EmlaLockPillory(EmlaLockBase, SensorEntity):
+    _attr_name = "Pillory"
+
+    @property
+    def native_value(self):
+        session = _session(self.coordinator)
+        if not session.get("pillory"):
+            return "disabled"
+        return "active" if session.get("pilloryleft", 0) else "inactive"
+
+
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
@@ -145,4 +195,9 @@ async def async_setup_entry(
         EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
         EmlaLockMaximum(coordinator, user_id, "maximum"),
         EmlaLockMinimum(coordinator, user_id, "minimum"),
+        EmlaLockTimeInLock(coordinator, user_id, "time_in_lock"),
+        EmlaLockPlayedGames(coordinator, user_id, "played_games"),
+        EmlaLockCleanings(coordinator, user_id, "cleanings"),
+        EmlaLockVerification(coordinator, user_id, "last_verification"),
+        EmlaLockPillory(coordinator, user_id, "pillory"),
     ])
