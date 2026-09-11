@@ -6,7 +6,6 @@ from homeassistant.core import HomeAssistant
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .api import EmlaLockApiError
 from .const import CONF_HOLDER_API_KEY, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
@@ -23,13 +22,10 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
 
     async def async_press(self):
         endpoint = "sub" if self._subtract else "add"
-        try:
-            data = await self.coordinator.api.action(
-                endpoint, value=self._value, text="Home Assistant"
-            )
-            self.coordinator.async_set_updated_data(data)
-        except EmlaLockApiError:
-            await self.coordinator.async_request_refresh()
+        data = await self.coordinator.api.action(
+            endpoint, value=self._value, text="Home Assistant"
+        )
+        self.coordinator.async_set_updated_data(data)
 
 
 async def async_setup_entry(
@@ -39,18 +35,14 @@ async def async_setup_entry(
 ):
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
 
-    # Only holder-authenticated entries can change the lock timer.
-    if not entry.data.get(CONF_HOLDER_API_KEY):
+    # Existing holder entries may have the holder role in their title even if
+    # they were created before the holder API key field was added.
+    is_holder = bool(entry.data.get(CONF_HOLDER_API_KEY)) or "(holder)" in entry.title.lower()
+    if not is_holder:
         return
 
     entities = []
     for value, label in ((900, "15 minutes"), (3600, "1 hour"), (86400, "1 day")):
-        entities.append(
-            EmlaLockActionButton(coordinator, entry.entry_id, f"Add {label}", value)
-        )
-        entities.append(
-            EmlaLockActionButton(
-                coordinator, entry.entry_id, f"Remove {label}", value, True
-            )
-        )
+        entities.append(EmlaLockActionButton(coordinator, entry.entry_id, f"Add {label}", value))
+        entities.append(EmlaLockActionButton(coordinator, entry.entry_id, f"Remove {label}", value, True))
     async_add_entities(entities)
