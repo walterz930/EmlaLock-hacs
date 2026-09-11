@@ -12,16 +12,42 @@ from .coordinator import EmlaLockCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
 
-SERVICE_SCHEMA = vol.Schema({
-    vol.Required("entry_id"): cv.string,
-    vol.Required("value"): vol.Coerce(int),
-    vol.Optional("text", default=""): cv.string,
-})
-RANDOM_SCHEMA = vol.Schema({
-    vol.Required("entry_id"): cv.string,
-    vol.Required("from_value"): vol.Coerce(int),
-    vol.Required("to_value"): vol.Coerce(int),
-})
+# EmlaLock accepts seconds or short terms such as W1D2H3M4S5 for time values.
+TIME_VALUE = vol.Any(vol.Coerce(int), cv.string)
+
+SERVICE_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("value"): TIME_VALUE,
+        vol.Optional("text", default=""): cv.string,
+    }
+)
+
+REQUIREMENT_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("value"): vol.Coerce(int),
+    }
+)
+
+TIME_RANDOM_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("from_value"): TIME_VALUE,
+        vol.Required("to_value"): TIME_VALUE,
+        vol.Optional("text", default=""): cv.string,
+    }
+)
+
+REQUIREMENT_RANDOM_SCHEMA = vol.Schema(
+    {
+        vol.Required("entry_id"): cv.string,
+        vol.Required("from_value"): vol.Coerce(int),
+        vol.Required("to_value"): vol.Coerce(int),
+    }
+)
+
+TIME_ENDPOINTS_WITH_TEXT = {"add", "sub", "addrandom", "subrandom"}
 
 
 async def async_setup(hass: HomeAssistant, config):
@@ -31,37 +57,59 @@ async def async_setup(hass: HomeAssistant, config):
             entry = hass.data[DOMAIN]["entries"].get(call.data["entry_id"])
             if not entry:
                 raise vol.Invalid("Unknown EmlaLock entry")
+
             api = entry["action_api"]
             try:
                 if random:
-                    result = await api.action(endpoint, **{"from": call.data["from_value"], "to": call.data["to_value"]})
+                    params = {
+                        "from": call.data["from_value"],
+                        "to": call.data["to_value"],
+                    }
+                    if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
+                        params["text"] = call.data["text"][:49]
                 else:
                     params = {"value": call.data["value"]}
-                    if call.data.get("text") and endpoint == "add":
+                    if endpoint in TIME_ENDPOINTS_WITH_TEXT and call.data.get("text"):
                         params["text"] = call.data["text"][:49]
-                    result = await api.action(endpoint, **params)
+
+                result = await api.action(endpoint, **params)
+                # Documented actions return the same user/session shape as /info.
                 entry["coordinator"].async_set_updated_data(result)
             except EmlaLockApiError as err:
                 raise vol.Invalid(str(err)) from err
 
-        for service_name, endpoint in {
-            "add_time": "add", "subtract_time": "sub",
-            "add_maximum": "addmaximum", "subtract_maximum": "submaximum",
-            "add_minimum": "addminimum", "subtract_minimum": "subminimum",
-            "add_requirements": "addrequirement", "subtract_requirements": "subrequirement",
-        }.items():
-            async def handler(call, ep=endpoint):
-                await run_action(call, ep)
-            hass.services.async_register(DOMAIN, service_name, handler, schema=SERVICE_SCHEMA)
+        service_schemas = {
+            "add_time": ("add", False, SERVICE_SCHEMA),
+            "subtract_time": ("sub", False, SERVICE_SCHEMA),
+            "add_maximum": ("addmaximum", False, SERVICE_SCHEMA),
+            "subtract_maximum": ("submaximum", False, SERVICE_SCHEMA),
+            "add_minimum": ("addminimum", False, SERVICE_SCHEMA),
+            "subtract_minimum": ("subminimum", False, SERVICE_SCHEMA),
+            "add_requirements": ("addrequirement", False, REQUIREMENT_SCHEMA),
+            "subtract_requirements": ("subrequirement", False, REQUIREMENT_SCHEMA),
+        }
 
-        for service_name, endpoint in {
-            "add_maximum_random": "addmaximumrandom", "subtract_maximum_random": "submaximumrandom",
-            "add_minimum_random": "addminimumrandom", "subtract_minimum_random": "subminimumrandom",
-            "add_requirements_random": "addrequirementrandom", "subtract_requirements_random": "subrequirementrandom",
-        }.items():
+        for service_name, (endpoint, random, schema) in service_schemas.items():
+            async def handler(call, ep=endpoint, is_random=random):
+                await run_action(call, ep, is_random)
+            hass.services.async_register(DOMAIN, service_name, handler, schema=schema)
+
+        random_schemas = {
+            "add_time_random": ("addrandom", TIME_RANDOM_SCHEMA),
+            "subtract_time_random": ("subrandom", TIME_RANDOM_SCHEMA),
+            "add_maximum_random": ("addmaximumrandom", TIME_RANDOM_SCHEMA),
+            "subtract_maximum_random": ("submaximumrandom", TIME_RANDOM_SCHEMA),
+            "add_minimum_random": ("addminimumrandom", TIME_RANDOM_SCHEMA),
+            "subtract_minimum_random": ("subminimumrandom", TIME_RANDOM_SCHEMA),
+            "add_requirements_random": ("addrequirementrandom", REQUIREMENT_RANDOM_SCHEMA),
+            "subtract_requirements_random": ("subrequirementrandom", REQUIREMENT_RANDOM_SCHEMA),
+        }
+
+        for service_name, (endpoint, schema) in random_schemas.items():
             async def random_handler(call, ep=endpoint):
                 await run_action(call, ep, True)
-            hass.services.async_register(DOMAIN, service_name, random_handler, schema=RANDOM_SCHEMA)
+            hass.services.async_register(DOMAIN, service_name, random_handler, schema=schema)
+
         hass.data[DOMAIN]["services_registered"] = True
     return True
 
@@ -72,19 +120,19 @@ async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     api_key = data[CONF_API_KEY]
     holder_api_key = data.get(CONF_HOLDER_API_KEY)
 
-    if holder_api_key:
-        action_api = EmlaLockApi(
-            hass,
-            user_id,
-            api_key,
-            holder_api_key=holder_api_key,
-        )
-    else:
-        action_api = EmlaLockApi(hass, user_id, api_key)
+    action_api = EmlaLockApi(
+        hass,
+        user_id,
+        api_key,
+        holder_api_key=holder_api_key,
+    )
 
     coordinator = EmlaLockCoordinator(hass, action_api)
     await coordinator.async_config_entry_first_refresh()
-    hass.data[DOMAIN]["entries"][entry.entry_id] = {"coordinator": coordinator, "action_api": action_api}
+    hass.data[DOMAIN]["entries"][entry.entry_id] = {
+        "coordinator": coordinator,
+        "action_api": action_api,
+    }
     await hass.config_entries.async_forward_entry_setups(entry, PLATFORMS)
     return True
 
