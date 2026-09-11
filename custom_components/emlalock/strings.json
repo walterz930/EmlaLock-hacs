@@ -1,0 +1,21 @@
+{
+  "config": {
+    "step": {
+      "user": {
+        "title": "Connect EmlaLock",
+        "description": "Enter the EmlaLock API credentials. For a holder instance, also enter the wearer credentials so holder-only changes can be authenticated.",
+        "data": {
+          "user_id": "User ID",
+          "api_key": "API key",
+          "role": "Instance role",
+          "wearer_user_id": "Wearer user ID",
+          "wearer_api_key": "Wearer API key"
+        }
+      }
+    },
+    "error": {
+      "invalid_auth": "The EmlaLock credentials were rejected.",
+      "wearer_credentials_required": "Wearer credentials are required for a holder instance."
+    }
+  }
+}
