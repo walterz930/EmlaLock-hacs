@@ -26,15 +26,18 @@ class EmlaLockConfigFlow(config_entries.ConfigFlow, domain=DOMAIN):
                     user_input[CONF_USER_ID],
                     user_input[CONF_API_KEY],
                 ).info()
-            except EmlaLockApiError:
-                errors["base"] = "invalid_auth"
+            except EmlaLockApiError as err:
+                if err.code in {"WrongAPIKey", "UserNotFound"}:
+                    errors["base"] = "invalid_auth"
+                elif err.code is None:
+                    errors["base"] = "cannot_connect"
+                else:
+                    errors["base"] = "unknown"
             else:
                 user = info.get("user", {})
                 username = user.get("username", user_input[CONF_USER_ID])
                 userid = str(user.get("userid", user_input[CONF_USER_ID]))
 
-                # One EmlaLock account gets one config entry. Do not create
-                # separate wearer/holder entity sets for the same account.
                 existing = next(
                     (
                         entry
