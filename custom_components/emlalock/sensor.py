@@ -13,8 +13,6 @@ from homeassistant.helpers.update_coordinator import CoordinatorEntity
 from .const import CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
-_WEEK_SECONDS = 7 * 86400
-
 
 def _session(coordinator):
     return (coordinator.data or {}).get("chastitysession") or {}
@@ -82,6 +80,35 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
         if end is None:
             return None
         return max(0, int(end - datetime.now(timezone.utc).timestamp()))
+
+    @property
+    def extra_state_attributes(self):
+        session = _session(self.coordinator)
+        return {
+            key: session.get(key)
+            for key in (
+                "chastitysessionid",
+                "creatorid",
+                "wearerid",
+                "holderid",
+                "status",
+                "sessiontype",
+                "duration",
+                "startduration",
+                "minduration",
+                "maxduration",
+                "requirements",
+                "startdate",
+                "enddate",
+                "timeinlock",
+                "lastverification",
+                "incleaning",
+                "cleaningstarted",
+                "closedate",
+                "endtype",
+                "canbeclosed",
+            )
+        }
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
