@@ -106,15 +106,6 @@ class EmlaLockStartDate(EmlaLockBase, SensorEntity):
         return _format_timestamp(_session(self.coordinator).get("startdate"))
 
 
-class EmlaLockEndDate(EmlaLockBase, SensorEntity):
-    _attr_name = "End date"
-    _attr_translation_key = "end_date"
-
-    @property
-    def native_value(self):
-        return _format_timestamp(_session(self.coordinator).get("enddate"))
-
-
 class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
     _attr_name = "Time passed"
     _attr_translation_key = "time_passed"
@@ -139,6 +130,15 @@ class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
 
     async def _async_update_time(self, _now) -> None:
         self.async_write_ha_state()
+
+
+class EmlaLockEndDate(EmlaLockBase, SensorEntity):
+    _attr_name = "End date"
+    _attr_translation_key = "end_date"
+
+    @property
+    def native_value(self):
+        return _format_timestamp(_session(self.coordinator).get("enddate"))
 
 
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
@@ -205,6 +205,15 @@ class EmlaLockMaximum(EmlaLockBase, SensorEntity):
         return _format_duration(_duration_seconds(_session(self.coordinator).get("maxduration")))
 
 
+class EmlaLockMinimum(EmlaLockBase, SensorEntity):
+    _attr_name = "Minimum duration"
+    _attr_translation_key = "minimum_duration"
+
+    @property
+    def native_value(self):
+        return _format_duration(_duration_seconds(_session(self.coordinator).get("minduration")))
+
+
 class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
     _attr_name = "Requirement links"
     _attr_translation_key = "requirement_links"
@@ -231,6 +240,7 @@ async def async_setup_entry(
             EmlaLockEndDate(coordinator, user_id, "end_date"),
             EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
             EmlaLockMaximum(coordinator, user_id, "maximum"),
+            EmlaLockMinimum(coordinator, user_id, "minimum"),
             EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
         ]
     )
