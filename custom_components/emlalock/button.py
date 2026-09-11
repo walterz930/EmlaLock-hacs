@@ -19,6 +19,7 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         self._value = value
         self._subtract = subtract
         self._attr_name = name
+        self._attr_translation_key = "subtract_time" if subtract else "add_time"
         self._attr_unique_id = f"{user_id}_{name.lower().replace(' ', '_')}"
         self._attr_entity_registry_enabled_default = True
 
@@ -47,8 +48,7 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         }
 
         # Pass the current session dates to the EmlaLock action API when they
-        # are available. This lets the API keep the action tied to the session
-        # start/end dates instead of only receiving the duration value.
+        # are available. This keeps the action tied to the current session.
         if session.get("startdate") is not None:
             params["startdate"] = session["startdate"]
         if session.get("enddate") is not None:
@@ -65,7 +65,9 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
-    coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
+    coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id][
+        "coordinator"
+    ]
     user_id = entry.data["user_id"]
 
     entities = []
