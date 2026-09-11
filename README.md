@@ -5,11 +5,10 @@ Custom Home Assistant integration for the EmlaLock API.
 ## Features
 
 - Multiple independent EmlaLock config entries.
-- Separate wearer and key-holder instances.
+- Wearer and key-holder access without a separate account-type selection.
 - Session status, time remaining, minimum duration, maximum duration and requirement-link sensors.
 - Add/subtract time buttons for 15 minutes, 1 hour and 1 day.
 - Home Assistant services for all documented API mutation families: time, maximum duration, minimum duration and requirement links, including random variants.
-- Holder instances accept both the holder API key and wearer credentials so the documented holder-authenticated subtract endpoints can be used.
 
 ## Installation
 
@@ -19,15 +18,11 @@ Restart Home Assistant and add EmlaLock from Settings > Devices & services.
 
 ## Configuration
 
-### Wearing instance
+Enter the EmlaLock User ID and API key. This creates a wearer instance.
 
-Enter the wearer's EmlaLock User ID and API key and choose `wearer`.
+If you also enter a Holder API key, the same User ID/API key are used as the target wearer credentials and the Holder API key is used for holder-authenticated actions. No account-type selection is required.
 
-### Key-holder instance
-
-Enter the holder's User ID and API key, choose `holder`, and also enter the wearer's User ID and API key. EmlaLock's holder-authenticated subtraction endpoints require the target wearer's credentials plus the holder API key.
-
-The two config entries are independent and have their own devices/entities.
+The config entries are independent and have their own devices/entities.
 
 ## Services
 
