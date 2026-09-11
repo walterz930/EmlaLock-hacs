@@ -3,6 +3,7 @@ from __future__ import annotations
 from homeassistant.components.button import ButtonEntity
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.core import HomeAssistant
+from homeassistant.exceptions import HomeAssistantError
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
@@ -21,7 +22,6 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         self._attr_name = name
         self._attr_translation_key = "subtract_time" if subtract else "add_time"
         self._attr_unique_id = f"{user_id}_{name.lower().replace(' ', '_')}"
-        self._attr_entity_registry_enabled_default = True
 
     @property
     def device_info(self):
@@ -35,29 +35,23 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
     def available(self) -> bool:
         if not super().available:
             return False
+        session = (self.coordinator.data or {}).get("chastitysession") or {}
+        if not session.get("status"):
+            return False
         if self._subtract and not self.coordinator.api.holder_api_key:
             return False
         return True
 
     async def async_press(self) -> None:
         endpoint = "sub" if self._subtract else "add"
-        session = (self.coordinator.data or {}).get("chastitysession") or {}
-        params = {
-            "value": self._value,
-            "text": "Home Assistant",
-        }
-
-        # Pass the current session dates to the EmlaLock action API when they
-        # are available. This keeps the action tied to the current session.
-        if session.get("startdate") is not None:
-            params["startdate"] = session["startdate"]
-        if session.get("enddate") is not None:
-            params["enddate"] = session["enddate"]
-
         try:
-            await self.coordinator.api.action(endpoint, **params)
-        except EmlaLockApiError:
-            return
+            await self.coordinator.api.action(
+                endpoint,
+                value=self._value,
+                text="Home Assistant",
+            )
+        except EmlaLockApiError as err:
+            raise HomeAssistantError(str(err)) from err
 
         await self.coordinator.async_request_refresh()
 
