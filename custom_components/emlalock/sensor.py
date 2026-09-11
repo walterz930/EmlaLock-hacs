@@ -32,7 +32,6 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
 
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     _attr_name = "Time remaining"
-    _attr_state_class = SensorStateClass.MEASUREMENT
 
     @property
     def native_value(self):
@@ -40,7 +39,11 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
         if not end:
             return None
 
-        remaining = max(0, int(end - datetime.now(timezone.utc).timestamp()))
+        try:
+            remaining = max(0, int(float(end) - datetime.now(timezone.utc).timestamp()))
+        except (TypeError, ValueError):
+            return None
+
         days, remainder = divmod(remaining, 86400)
         hours, remainder = divmod(remainder, 3600)
         minutes, seconds = divmod(remainder, 60)
