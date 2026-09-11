@@ -139,7 +139,24 @@ class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
 
     @property
     def native_value(self):
-        return _format_duration(_session(self.coordinator).get("timeinlock"))
+        start = _timestamp(_session(self.coordinator).get("startdate"))
+        if start is None:
+            return None
+        return _format_duration(max(0, int(datetime.now(timezone.utc).timestamp() - start)))
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_timer = async_track_time_interval(
+            self.hass, self._async_update_time, timedelta(seconds=1)
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        if hasattr(self, "_unsub_timer"):
+            self._unsub_timer()
+        await super().async_will_remove_from_hass()
+
+    async def _async_update_time(self, _now) -> None:
+        self.async_write_ha_state()
 
 
 async def async_setup_entry(
