@@ -34,10 +34,19 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
     def available(self) -> bool:
         if not super().available:
             return False
+
         session = (self.coordinator.data or {}).get("chastitysession") or {}
-        if not session.get("status"):
+        wearing = bool(session.get("status"))
+
+        # Buttons only make sense while there is an active session.
+        if not wearing:
             return False
-        if self._subtract and not self.coordinator.api.holder_api_key:
+
+        # While wearing, adding time is blocked. Removing time remains available
+        # (when a holder API key is configured).
+        if not self._subtract:
+            return False
+        if not self.coordinator.api.holder_api_key:
             return False
         return True
 
