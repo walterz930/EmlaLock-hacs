@@ -14,12 +14,19 @@ from .coordinator import EmlaLockCoordinator
 class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry_id, name, value, subtract=False):
+    def __init__(self, coordinator, entry_id, name, value, subtract=False, enabled=True):
         super().__init__(coordinator)
         self._value = value
         self._subtract = subtract
         self._attr_name = name
         self._attr_unique_id = f"{entry_id}_{name.lower().replace(' ', '_')}"
+        self._attr_entity_registry_enabled_default = enabled
+
+    @property
+    def available(self) -> bool:
+        return super().available and not self._subtract or super().available and bool(
+            self.coordinator.api.holder_api_key
+        )
 
     async def async_press(self) -> None:
         endpoint = "sub" if self._subtract else "add"
@@ -32,9 +39,6 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         except EmlaLockApiError:
             return
 
-        # Do not replace coordinator.data with the action response. The action
-        # response is not guaranteed to have the same shape as /info, and doing
-        # so can make coordinator-backed entities appear unavailable/removed.
         await self.coordinator.async_request_refresh()
 
 
@@ -44,10 +48,7 @@ async def async_setup_entry(
     async_add_entities: AddEntitiesCallback,
 ) -> None:
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
-
-    is_holder = bool(entry.data.get(CONF_HOLDER_API_KEY)) or "(holder)" in entry.title.lower()
-    if not is_holder:
-        return
+    has_holder_key = bool(entry.data.get(CONF_HOLDER_API_KEY))
 
     entities = []
     for value, label in (
@@ -60,7 +61,12 @@ async def async_setup_entry(
         )
         entities.append(
             EmlaLockActionButton(
-                coordinator, entry.entry_id, f"Remove {label}", value, subtract=True
+                coordinator,
+                entry.entry_id,
+                f"Remove {label}",
+                value,
+                subtract=True,
+                enabled=has_holder_key,
             )
         )
     async_add_entities(entities)
