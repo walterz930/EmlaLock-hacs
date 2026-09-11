@@ -7,7 +7,7 @@ from homeassistant.core import HomeAssistant, ServiceCall
 from homeassistant.helpers import config_validation as cv
 
 from .api import EmlaLockApi, EmlaLockApiError
-from .const import CONF_API_KEY, CONF_ROLE, CONF_USER_ID, CONF_WEARER_API_KEY, CONF_WEARER_USER_ID, DOMAIN, ROLE_HOLDER
+from .const import CONF_API_KEY, CONF_HOLDER_API_KEY, CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BUTTON]
@@ -68,17 +68,20 @@ async def async_setup(hass: HomeAssistant, config):
 
 async def async_setup_entry(hass: HomeAssistant, entry: ConfigEntry) -> bool:
     data = entry.data
-    role = data.get(CONF_ROLE, "wearer")
-    own_api = EmlaLockApi(hass, data[CONF_USER_ID], data[CONF_API_KEY])
-    if role == ROLE_HOLDER:
+    user_id = data[CONF_USER_ID]
+    api_key = data[CONF_API_KEY]
+    holder_api_key = data.get(CONF_HOLDER_API_KEY)
+
+    if holder_api_key:
         action_api = EmlaLockApi(
             hass,
-            data[CONF_WEARER_USER_ID],
-            data[CONF_WEARER_API_KEY],
-            holder_api_key=data[CONF_API_KEY],
+            user_id,
+            api_key,
+            holder_api_key=holder_api_key,
         )
     else:
-        action_api = own_api
+        action_api = EmlaLockApi(hass, user_id, api_key)
+
     coordinator = EmlaLockCoordinator(hass, action_api)
     await coordinator.async_config_entry_first_refresh()
     hass.data[DOMAIN]["entries"][entry.entry_id] = {"coordinator": coordinator, "action_api": action_api}
