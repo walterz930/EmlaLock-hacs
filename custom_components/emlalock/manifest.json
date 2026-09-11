@@ -1,0 +1,1 @@
+{"domain":"emlalock","name":"EmlaLock","codeowners":["@walterz930"],"config_flow":true,"documentation":"https://github.com/walterz930/emlalock-ha","iot_class":"cloud_polling","issue_tracker":"https://github.com/walterz930/emlalock-ha/issues","requirements":[],"version":"1.0.0"}
