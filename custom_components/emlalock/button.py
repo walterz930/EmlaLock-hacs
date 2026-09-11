@@ -7,20 +7,22 @@ from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
 from .api import EmlaLockApiError
-from .const import CONF_HOLDER_API_KEY, DOMAIN
+from .const import DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 
 class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry_id, name, value, subtract=False, enabled=True):
+    def __init__(self, coordinator, entry_id, name, value, subtract=False):
         super().__init__(coordinator)
         self._value = value
         self._subtract = subtract
         self._attr_name = name
         self._attr_unique_id = f"{entry_id}_{name.lower().replace(' ', '_')}"
-        self._attr_entity_registry_enabled_default = enabled
+        # Keep every action entity visible in Home Assistant. Availability is
+        # used below to block holder-only actions when no holder API key exists.
+        self._attr_entity_registry_enabled_default = True
 
     @property
     def available(self) -> bool:
@@ -48,7 +50,6 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ) -> None:
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
-    has_holder_key = bool(entry.data.get(CONF_HOLDER_API_KEY))
 
     entities = []
     for value, label in (
@@ -66,7 +67,6 @@ async def async_setup_entry(
                 f"Remove {label}",
                 value,
                 subtract=True,
-                enabled=has_holder_key,
             )
         )
     async_add_entities(entities)
