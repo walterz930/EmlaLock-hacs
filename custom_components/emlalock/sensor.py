@@ -47,6 +47,13 @@ def _session_datetime(coordinator, key):
     return datetime.fromtimestamp(timestamp, tz=timezone.utc)
 
 
+def _format_timestamp(value):
+    timestamp = _timestamp(value)
+    if timestamp is None:
+        return None
+    return datetime.fromtimestamp(timestamp, tz=timezone.utc).strftime("%d.%m.%Y %H:%M:%S")
+
+
 def _duration_seconds(value):
     if value is None or value == "":
         return None
@@ -152,6 +159,10 @@ class EmlaLockStartDate(EmlaLockBase, SensorEntity):
     def native_value(self):
         return _session_datetime(self.coordinator, "startdate")
 
+    @property
+    def extra_state_attributes(self):
+        return {"formatted": _format_timestamp(_session(self.coordinator).get("startdate"))}
+
 
 class EmlaLockEndDate(EmlaLockBase, SensorEntity):
     _attr_name = "End date"
@@ -161,6 +172,10 @@ class EmlaLockEndDate(EmlaLockBase, SensorEntity):
     @property
     def native_value(self):
         return _session_datetime(self.coordinator, "enddate")
+
+    @property
+    def extra_state_attributes(self):
+        return {"formatted": _format_timestamp(_session(self.coordinator).get("enddate"))}
 
 
 class EmlaLockSession(EmlaLockBase, SensorEntity):
