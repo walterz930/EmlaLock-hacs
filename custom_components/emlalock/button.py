@@ -40,12 +40,22 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
 
     async def async_press(self) -> None:
         endpoint = "sub" if self._subtract else "add"
+        session = (self.coordinator.data or {}).get("chastitysession") or {}
+        params = {
+            "value": self._value,
+            "text": "Home Assistant",
+        }
+
+        # Pass the current session dates to the EmlaLock action API when they
+        # are available. This lets the API keep the action tied to the session
+        # start/end dates instead of only receiving the duration value.
+        if session.get("startdate") is not None:
+            params["startdate"] = session["startdate"]
+        if session.get("enddate") is not None:
+            params["enddate"] = session["enddate"]
+
         try:
-            await self.coordinator.api.action(
-                endpoint,
-                value=self._value,
-                text="Home Assistant",
-            )
+            await self.coordinator.api.action(endpoint, **params)
         except EmlaLockApiError:
             return
 
