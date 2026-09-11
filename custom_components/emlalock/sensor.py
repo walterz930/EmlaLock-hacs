@@ -36,6 +36,19 @@ def _timestamp(value):
     return parsed.timestamp()
 
 
+def _format_duration(value):
+    if value is None or value == "":
+        return None
+    try:
+        total = max(0, int(float(value)))
+    except (TypeError, ValueError):
+        return str(value)
+    days, remainder = divmod(total, 86400)
+    hours, remainder = divmod(remainder, 3600)
+    minutes, seconds = divmod(remainder, 60)
+    return f"{days:02d} {hours:02d} {minutes:02d} {seconds:02d}"
+
+
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
     _attr_has_entity_name = True
 
@@ -58,10 +71,7 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
         if end is None:
             return None
         remaining = max(0, int(end - datetime.now(timezone.utc).timestamp()))
-        days, remainder = divmod(remaining, 86400)
-        hours, remainder = divmod(remainder, 3600)
-        minutes, seconds = divmod(remainder, 60)
-        return f"{days:02d} {hours:02d} {minutes:02d} {seconds:02d}"
+        return _format_duration(remaining)
 
     async def async_added_to_hass(self) -> None:
         await super().async_added_to_hass()
@@ -110,7 +120,7 @@ class EmlaLockMaximum(EmlaLockBase, SensorEntity):
 
     @property
     def native_value(self):
-        return _session(self.coordinator).get("maxduration")
+        return _format_duration(_session(self.coordinator).get("maxduration"))
 
 
 class EmlaLockMinimum(EmlaLockBase, SensorEntity):
@@ -118,7 +128,7 @@ class EmlaLockMinimum(EmlaLockBase, SensorEntity):
 
     @property
     def native_value(self):
-        return _session(self.coordinator).get("minduration")
+        return _format_duration(_session(self.coordinator).get("minduration"))
 
 
 async def async_setup_entry(
