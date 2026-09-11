@@ -24,14 +24,18 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
     async def async_press(self) -> None:
         endpoint = "sub" if self._subtract else "add"
         try:
-            data = await self.coordinator.api.action(
+            await self.coordinator.api.action(
                 endpoint,
                 value=self._value,
                 text="Home Assistant",
             )
-            self.coordinator.async_set_updated_data(data)
         except EmlaLockApiError:
-            await self.coordinator.async_request_refresh()
+            return
+
+        # Do not replace coordinator.data with the action response. The action
+        # response is not guaranteed to have the same shape as /info, and doing
+        # so can make coordinator-backed entities appear unavailable/removed.
+        await self.coordinator.async_request_refresh()
 
 
 async def async_setup_entry(
