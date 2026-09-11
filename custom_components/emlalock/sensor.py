@@ -88,6 +88,59 @@ class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
         }
 
 
+class EmlaLockSession(EmlaLockBase, SensorEntity):
+    _attr_name = "Session"
+    _attr_translation_key = "session"
+
+    @property
+    def native_value(self):
+        return "active" if _session(self.coordinator).get("status") else "inactive"
+
+
+class EmlaLockStartDate(EmlaLockBase, SensorEntity):
+    _attr_name = "Start date"
+    _attr_translation_key = "start_date"
+
+    @property
+    def native_value(self):
+        return _format_timestamp(_session(self.coordinator).get("startdate"))
+
+
+class EmlaLockEndDate(EmlaLockBase, SensorEntity):
+    _attr_name = "End date"
+    _attr_translation_key = "end_date"
+
+    @property
+    def native_value(self):
+        return _format_timestamp(_session(self.coordinator).get("enddate"))
+
+
+class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
+    _attr_name = "Time passed"
+    _attr_translation_key = "time_passed"
+
+    @property
+    def native_value(self):
+        start = _timestamp(_session(self.coordinator).get("startdate"))
+        if start is None:
+            return None
+        return _format_duration(datetime.now(timezone.utc).timestamp() - start)
+
+    async def async_added_to_hass(self) -> None:
+        await super().async_added_to_hass()
+        self._unsub_timer = async_track_time_interval(
+            self.hass, self._async_update_time, timedelta(seconds=1)
+        )
+
+    async def async_will_remove_from_hass(self) -> None:
+        if hasattr(self, "_unsub_timer"):
+            self._unsub_timer()
+        await super().async_will_remove_from_hass()
+
+    async def _async_update_time(self, _now) -> None:
+        self.async_write_ha_state()
+
+
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
     _attr_name = "Time remaining"
     _attr_translation_key = "time_remaining"
@@ -143,31 +196,13 @@ class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
         self.async_write_ha_state()
 
 
-class EmlaLockStartDate(EmlaLockBase, SensorEntity):
-    _attr_name = "Start date"
-    _attr_translation_key = "start_date"
+class EmlaLockMaximum(EmlaLockBase, SensorEntity):
+    _attr_name = "Maximum duration"
+    _attr_translation_key = "maximum_duration"
 
     @property
     def native_value(self):
-        return _format_timestamp(_session(self.coordinator).get("startdate"))
-
-
-class EmlaLockEndDate(EmlaLockBase, SensorEntity):
-    _attr_name = "End date"
-    _attr_translation_key = "end_date"
-
-    @property
-    def native_value(self):
-        return _format_timestamp(_session(self.coordinator).get("enddate"))
-
-
-class EmlaLockSession(EmlaLockBase, SensorEntity):
-    _attr_name = "Session"
-    _attr_translation_key = "session"
-
-    @property
-    def native_value(self):
-        return "active" if _session(self.coordinator).get("status") else "inactive"
+        return _format_duration(_duration_seconds(_session(self.coordinator).get("maxduration")))
 
 
 class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
@@ -181,50 +216,6 @@ class EmlaLockRequirementLinks(EmlaLockBase, SensorEntity):
         return _session(self.coordinator).get("requirements")
 
 
-class EmlaLockMaximum(EmlaLockBase, SensorEntity):
-    _attr_name = "Maximum duration"
-    _attr_translation_key = "maximum_duration"
-
-    @property
-    def native_value(self):
-        return _format_duration(_duration_seconds(_session(self.coordinator).get("maxduration")))
-
-
-class EmlaLockMinimum(EmlaLockBase, SensorEntity):
-    _attr_name = "Minimum duration"
-    _attr_translation_key = "minimum_duration"
-
-    @property
-    def native_value(self):
-        return _format_duration(_duration_seconds(_session(self.coordinator).get("minduration")))
-
-
-class EmlaLockTimeInLock(EmlaLockBase, SensorEntity):
-    _attr_name = "Time passed"
-    _attr_translation_key = "time_passed"
-
-    @property
-    def native_value(self):
-        start = _timestamp(_session(self.coordinator).get("startdate"))
-        if start is None:
-            return None
-        return _format_duration(datetime.now(timezone.utc).timestamp() - start)
-
-    async def async_added_to_hass(self) -> None:
-        await super().async_added_to_hass()
-        self._unsub_timer = async_track_time_interval(
-            self.hass, self._async_update_time, timedelta(seconds=1)
-        )
-
-    async def async_will_remove_from_hass(self) -> None:
-        if hasattr(self, "_unsub_timer"):
-            self._unsub_timer()
-        await super().async_will_remove_from_hass()
-
-    async def _async_update_time(self, _now) -> None:
-        self.async_write_ha_state()
-
-
 async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
@@ -236,10 +227,9 @@ async def async_setup_entry(
         [
             EmlaLockSession(coordinator, user_id, "session"),
             EmlaLockStartDate(coordinator, user_id, "start_date"),
-            EmlaLockEndDate(coordinator, user_id, "end_date"),
             EmlaLockTimeInLock(coordinator, user_id, "time_passed"),
+            EmlaLockEndDate(coordinator, user_id, "end_date"),
             EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
-            EmlaLockMinimum(coordinator, user_id, "minimum"),
             EmlaLockMaximum(coordinator, user_id, "maximum"),
             EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
         ]
