@@ -9,7 +9,7 @@ from homeassistant.helpers.event import async_track_time_interval
 from homeassistant.helpers.entity_platform import AddEntitiesCallback
 from homeassistant.helpers.update_coordinator import CoordinatorEntity
 
-from .const import DOMAIN
+from .const import CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 
@@ -52,14 +52,17 @@ def _format_duration(value):
 class EmlaLockBase(CoordinatorEntity[EmlaLockCoordinator]):
     _attr_has_entity_name = True
 
-    def __init__(self, coordinator, entry_id, unique_suffix):
+    def __init__(self, coordinator, user_id, unique_suffix):
         super().__init__(coordinator)
-        self._attr_unique_id = f"{entry_id}_{unique_suffix}"
-        self._entry_id = entry_id
+        self._attr_unique_id = f"{user_id}_{unique_suffix}"
 
     @property
     def device_info(self):
-        return {"identifiers": {(DOMAIN, self._entry_id)}, "name": "EmlaLock"}
+        return {
+            "identifiers": {(DOMAIN, self.coordinator.api.user_id)},
+            "name": "EmlaLock",
+            "manufacturer": "EmlaLock",
+        }
 
 
 class EmlaLockTimeRemaining(EmlaLockBase, SensorEntity):
@@ -135,10 +138,11 @@ async def async_setup_entry(
     hass: HomeAssistant, entry: ConfigEntry, async_add_entities: AddEntitiesCallback
 ):
     coordinator: EmlaLockCoordinator = hass.data[DOMAIN]["entries"][entry.entry_id]["coordinator"]
+    user_id = entry.data[CONF_USER_ID]
     async_add_entities([
-        EmlaLockTimeRemaining(coordinator, entry.entry_id, "remaining"),
-        EmlaLockSession(coordinator, entry.entry_id, "session"),
-        EmlaLockRequirementLinks(coordinator, entry.entry_id, "requirements"),
-        EmlaLockMaximum(coordinator, entry.entry_id, "maximum"),
-        EmlaLockMinimum(coordinator, entry.entry_id, "minimum"),
+        EmlaLockTimeRemaining(coordinator, user_id, "remaining"),
+        EmlaLockSession(coordinator, user_id, "session"),
+        EmlaLockRequirementLinks(coordinator, user_id, "requirements"),
+        EmlaLockMaximum(coordinator, user_id, "maximum"),
+        EmlaLockMinimum(coordinator, user_id, "minimum"),
     ])
