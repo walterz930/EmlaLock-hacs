@@ -23,7 +23,7 @@ class EmlaLockCard extends HTMLElement {
   }
 
   getCardSize() {
-    return 4;
+    return 6;
   }
 
   _findEntity(...suffixes) {
@@ -45,6 +45,25 @@ class EmlaLockCard extends HTMLElement {
     return entity.state;
   }
 
+  _findButton(...suffixes) {
+    if (!this._hass?.states) return null;
+    const wanted = suffixes.map((value) => value.toLowerCase());
+    return Object.values(this._hass.states).find((item) => {
+      if (!item.entity_id.toLowerCase().startsWith("button.")) return false;
+      const id = item.entity_id.toLowerCase();
+      const name = String(item.attributes?.friendly_name || "").toLowerCase();
+      if (!id.includes("emlalock") && !name.includes("emlalock")) return false;
+      return wanted.some((suffix) =>
+        id.endsWith(`_${suffix}`) || name === `emlalock ${suffix.replaceAll("_", " ")}`
+      );
+    }) || null;
+  }
+
+  async _press(entityId) {
+    if (!this._hass || !entityId) return;
+    await this._hass.callService("button", "press", { entity_id: entityId });
+  }
+
   _render() {
     if (!this._hass) return;
 
@@ -52,6 +71,16 @@ class EmlaLockCard extends HTMLElement {
     const remaining = this._findEntity("time_remaining", "remaining");
     const maximum = this._findEntity("maximum", "maximum_duration");
     const minimum = this._findEntity("minimum", "minimum_duration");
+
+    const buttons = [
+      ["−1 hour", "subtract_1_hour", "subtract 1 hour"],
+      ["+1 hour", "add_1_hour", "add 1 hour"],
+      ["−1 day", "subtract_1_day", "subtract 1 day"],
+      ["+1 day", "add_1_day", "add 1 day"],
+    ].map(([label, ...suffixes]) => ({
+      label,
+      entity: this._findButton(...suffixes),
+    }));
 
     this._root.innerHTML = `
       <style>
@@ -108,6 +137,24 @@ class EmlaLockCard extends HTMLElement {
           margin-top: 4px;
           overflow-wrap: anywhere;
         }
+        .actions {
+          display: grid;
+          grid-template-columns: repeat(2, minmax(0, 1fr));
+          gap: 9px;
+          margin-top: 12px;
+        }
+        .action {
+          min-height: 48px;
+          border: 0;
+          border-radius: 15px;
+          background: #242729;
+          color: #f4f5f7;
+          font: inherit;
+          font-weight: 700;
+          cursor: pointer;
+        }
+        .action:hover:not(:disabled) { background: #303437; }
+        .action:disabled { opacity: .42; cursor: default; }
         @media (max-width: 430px) {
           .row { min-height: 61px; }
           .value { font-size: 16px; }
@@ -121,9 +168,23 @@ class EmlaLockCard extends HTMLElement {
             ${this._row("⏱", "Minimum", this._value(minimum))}
             ${this._row("⏱", "Maximum", this._value(maximum))}
           </div>
+          <div class="actions">
+            ${buttons.map((button, index) => `
+              <button class="action" data-action="${index}" ${!button.entity || button.entity.state === "unavailable" ? "disabled" : ""}>
+                ${button.label}
+              </button>
+            `).join("")}
+          </div>
         </div>
       </ha-card>
     `;
+
+    this.shadowRoot.querySelectorAll(".action").forEach((element) => {
+      element.addEventListener("click", () => {
+        const button = buttons[Number(element.dataset.action)];
+        if (button?.entity) this._press(button.entity.entity_id);
+      });
+    });
   }
 
   _row(icon, label, value) {
@@ -146,6 +207,6 @@ window.customCards = window.customCards || [];
 window.customCards.push({
   type: "emlalock-card",
   name: "EmlaLock Card",
-  description: "A minimal EmlaLock card showing elapsed, remaining, minimum, and maximum time.",
+  description: "A minimal EmlaLock card showing elapsed, remaining, minimum, and maximum time with four duration controls.",
   preview: true,
 });
