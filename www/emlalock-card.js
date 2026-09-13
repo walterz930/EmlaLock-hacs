@@ -34,6 +34,7 @@ class EmlaLockCard extends HTMLElement {
     return states.find((item) => {
       const id = item.entity_id.toLowerCase();
       const name = String(item.attributes?.friendly_name || "").toLowerCase();
+      if (!id.includes("emlalock") && !name.includes("emlalock")) return false;
       return wanted.some((suffix) =>
         id.endsWith(`_${suffix}`) || name === `emlalock ${suffix.replaceAll("_", " ")}`
       );
@@ -51,10 +52,6 @@ class EmlaLockCard extends HTMLElement {
 
   _isAvailable(entity) {
     return Boolean(entity && entity.state !== "unavailable" && entity.state !== "unknown");
-  }
-
-  _icon(symbol) {
-    return `<span class="icon">${symbol}</span>`;
   }
 
   _buttonHtml(entity, label, key) {
@@ -84,6 +81,42 @@ class EmlaLockCard extends HTMLElement {
     const isActive = ["on", "true", "active", "yes"].includes(String(activeValue).toLowerCase());
 
     this._root.innerHTML = `
+      <style>
+        :host { display: block; }
+        ha-card { overflow: hidden; border-radius: 24px; background: #1b1d1e; color: #f4f5f7; border: 1px solid #34383b; box-shadow: none; }
+        .card { padding: 18px 16px 20px; font-family: var(--paper-font-body1_-_font-family, Arial, sans-serif); }
+        .header { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 2px 4px 18px; }
+        .identity { display: flex; align-items: center; gap: 12px; min-width: 0; }
+        .lock { color: #08a9df; font-size: 30px; line-height: 1; }
+        .title { font-size: 25px; font-weight: 700; letter-spacing: .2px; }
+        .subtitle { color: #aeb3b8; font-size: 15px; margin-top: 3px; }
+        .status { display: flex; align-items: center; gap: 8px; border-radius: 24px; padding: 12px 15px; font-size: 14px; font-weight: 700; white-space: nowrap; }
+        .status.on { color: #08b8f0; background: #103b4b; }
+        .status.off { color: #aeb3b8; background: #303336; }
+        .dot { width: 10px; height: 10px; border-radius: 50%; background: currentColor; }
+        .sensors { display: flex; flex-direction: column; gap: 9px; }
+        .row { display: flex; align-items: center; min-height: 65px; border-radius: 17px; background: #242729; padding: 10px 12px; box-sizing: border-box; }
+        .row-icon { width: 40px; flex: 0 0 40px; color: #d8dde5; font-size: 24px; text-align: center; }
+        .row-content { min-width: 0; flex: 1; padding-left: 8px; }
+        .label { color: #aeb7c5; font-size: 13px; font-weight: 700; letter-spacing: .6px; text-transform: uppercase; }
+        .value { color: #f4f5f7; font-size: 18px; font-weight: 600; margin-top: 4px; overflow-wrap: anywhere; }
+        .chevron { color: #cdd4df; font-size: 31px; line-height: 1; padding-left: 8px; }
+        .divider { height: 1px; background: #383c3f; margin: 18px 0 16px; }
+        .section-title { color: #aeb7c5; font-size: 14px; font-weight: 700; letter-spacing: .7px; margin: 0 0 13px; }
+        .actions { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .action { border: 0; border-radius: 16px; min-height: 58px; padding: 10px 8px; background: #08a9df; color: white; font: inherit; font-size: 16px; font-weight: 700; cursor: pointer; transition: filter .15s ease, opacity .15s ease; }
+        .action:hover:not(:disabled) { filter: brightness(1.08); }
+        .action:active:not(:disabled) { filter: brightness(.92); }
+        .action:disabled { background: #4b5053; color: #9da3a8; opacity: .7; cursor: not-allowed; }
+        @media (max-width: 430px) {
+          .header { align-items: flex-start; }
+          .status { padding: 10px 11px; font-size: 12px; }
+          .title { font-size: 22px; }
+          .row { min-height: 61px; }
+          .value { font-size: 16px; }
+          .action { font-size: 14px; }
+        }
+      </style>
       <ha-card>
         <div class="card">
           <div class="header">
