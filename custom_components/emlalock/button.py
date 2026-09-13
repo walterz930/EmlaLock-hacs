@@ -39,8 +39,9 @@ class EmlaLockActionButton(CoordinatorEntity[EmlaLockCoordinator], ButtonEntity)
         if not session.get("status"):
             return False
 
-        # All EmlaLock action buttons are holder-controlled.  The holder API
+        # All EmlaLock action buttons are holder-controlled. The holder API
         # key must therefore be configured before any button can be used.
+        # Home Assistant will show unavailable buttons as disabled.
         if not self.coordinator.api.holder_api_key:
             return False
 
@@ -80,7 +81,7 @@ async def async_setup_entry(
             EmlaLockActionButton(
                 coordinator,
                 user_id,
-                f"Remove {label}",
+                f"Subtract {label}",
                 value,
                 subtract=True,
             )
