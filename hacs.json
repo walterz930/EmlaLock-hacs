@@ -1,3 +1,5 @@
 {
-  "name": "EmlaLock"
+  "name": "EmlaLock Card",
+  "render_readme": true,
+  "filename": "emlalock-card.js"
 }
