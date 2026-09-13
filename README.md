@@ -13,31 +13,18 @@ A custom Home Assistant integration for the [EmlaLock](https://emlalock.com) API
 - Requirement-link sensor.
 - Add/subtract time buttons for **1 hour** and **1 day**.
 - Buttons become unavailable when `holder_api_key` is not configured.
-- Optional EmlaLock Lovelace card styled like the mobile dashboard design.
+- EmlaLock Lovelace card included and registered automatically by the integration.
 - Home Assistant services for changing time, minimum/maximum duration, and requirement links.
 
 ## Lovelace card
 
-The repository includes `www/emlalock-card.js`, a custom Lovelace card that automatically discovers the EmlaLock entities and buttons. It displays only the EmlaLock session information and the four duration controls.
+The repository includes `www/emlalock-card.js`, a custom Lovelace card that automatically discovers the EmlaLock entities and buttons. The integration now serves and registers this JavaScript automatically when EmlaLock is loaded.
+
+**No `configuration.yaml` entry, Lovelace resource, resource URL, entity IDs, or card YAML configuration is required.**
+
+After installing/updating the integration and restarting Home Assistant, the **EmlaLock Card** is available in the dashboard card picker. Add the card normally; it needs no configuration or entity input because it discovers the EmlaLock entities automatically.
 
 The card automatically disables its duration buttons when the corresponding Home Assistant button entity is unavailable. The integration marks those entities unavailable when the holder API key is missing or there is no active session.
-
-### Add the card resource once
-
-Home Assistant requires custom frontend JavaScript to be registered as a Lovelace resource. Add this resource under **Settings → Dashboards → Resources**:
-
-- URL: `/local/community/emlalock/www/emlalock-card.js`
-- Resource type: `JavaScript module`
-
-If HACS installs the repository under a different folder, use the matching `/local/community/<folder>/www/emlalock-card.js` path.
-
-Then add a **Manual** card to the dashboard:
-
-```yaml
-type: custom:emlalock-card
-```
-
-No entity IDs or other card configuration are required. The card discovers the EmlaLock entities automatically.
 
 ## Sensors
 
