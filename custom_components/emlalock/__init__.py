@@ -18,7 +18,7 @@ from .coordinator import EmlaLockCoordinator
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
 
 _CARD_URL = "/emlalock/emlalock-card.js"
-_CARD_FILE = Path(__file__).resolve().parents[2] / "www" / "emlalock-card.js"
+_CARD_FILE = Path(__file__).resolve().parent / "www" / "emlalock-card.js"
 
 _SHORT_TIME_RE = re.compile(r"^(?:W\d+|D\d+|H\d+|M\d+|S\d+)+$", re.IGNORECASE)
 
@@ -80,8 +80,9 @@ TIME_ENDPOINTS_WITH_TEXT = {"add", "sub"}
 async def async_setup(hass: HomeAssistant, config):
     hass.data.setdefault(DOMAIN, {"entries": {}, "services_registered": False})
 
-    # Make the bundled Lovelace card available automatically. Users no longer
-    # need to add a dashboard resource or paste JavaScript/YAML for the card.
+    # Make the bundled Lovelace card available automatically. The card lives
+    # inside the installed integration package, so HACS installs it together
+    # with EmlaLock and users do not need a separate dashboard resource.
     if _CARD_FILE.is_file():
         await hass.http.async_register_static_paths(
             [StaticPathConfig(_CARD_URL, str(_CARD_FILE), cache_headers=False)]
