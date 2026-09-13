@@ -1,76 +1,47 @@
 # EmlaLock for Home Assistant
 
-A custom Home Assistant integration for the [EmlaLock](https://emlalock.com) API, including a matching Lovelace dashboard card.
+Home Assistant custom integration for EmlaLock.
 
-## Features
+## Installation via HACS
 
-- Easy setup through the Home Assistant UI.
-- Supports multiple independent EmlaLock accounts/config entries.
-- Supports wearer access and optional holder access.
-- Binary **Session active** state plus session information sensors.
-- Human-readable **Time remaining** and **Time passed** values.
-- Human-readable minimum and maximum duration values.
-- Requirement-link sensor.
-- Add/subtract time buttons for **1 hour** and **1 day**.
-- Buttons become unavailable when `holder_api_key` is not configured.
-- EmlaLock Lovelace card included and registered automatically by the integration.
-- Home Assistant services for changing time, minimum/maximum duration, and requirement links.
+Install **EmlaLock** from HACS and configure the integration with your EmlaLock user/API details.
 
-## Lovelace card
+The repository also includes the **EmlaLock Card**, packaged like a HACS community card and bundled with the integration. The card is automatically served and registered by the integration after installation.
 
-The repository includes `www/emlalock-card.js`, a custom Lovelace card that automatically discovers the EmlaLock entities and buttons. The integration now serves and registers this JavaScript automatically when EmlaLock is loaded.
+### No manual dashboard resource or YAML is required
 
-**No `configuration.yaml` entry, Lovelace resource, resource URL, entity IDs, or card YAML configuration is required.**
+After installing or updating EmlaLock and restarting Home Assistant:
 
-After installing/updating the integration and restarting Home Assistant, the **EmlaLock Card** is available in the dashboard card picker. Add the card normally; it needs no configuration or entity input because it discovers the EmlaLock entities automatically.
+- no `configuration.yaml` entry is required
+- no manual Lovelace resource URL is required
+- no JavaScript resource needs to be added manually
+- no entity IDs need to be entered in the card
+- no card YAML configuration is required
+- the **EmlaLock Card** is registered with Home Assistant and appears in the dashboard card picker
 
-The card automatically disables its duration buttons when the corresponding Home Assistant button entity is unavailable. The integration marks those entities unavailable when the holder API key is missing or there is no active session.
+The card automatically discovers the EmlaLock entities and action buttons created by the integration.
 
-## Sensors
+## Card
 
-The regular sensors are presented in this order:
+The bundled card is available as `custom:emlalock-card`. It is packaged in the repository under `dist/emlalock-card.js` and inside the installed integration package so HACS installation and automatic registration work together.
 
-1. Session
-2. Start date
-3. Time passed
-4. End date
-5. Time remaining
-6. Maximum duration
-7. Minimum duration
-8. Requirement links
+The card provides:
 
-**Session active** is a binary sensor and is shown separately by Home Assistant.
+- EmlaLock session information
+- session active/inactive status
+- start and end dates
+- elapsed and remaining time
+- minimum and maximum duration
+- requirement links
+- add/subtract duration controls
+- automatic detection of whether holder-key actions are available
 
-## Buttons
+You do not need to specify the EmlaLock entity IDs manually.
 
-The integration provides four time-action buttons:
+## Important Home Assistant limitation
 
-- **Add 1 hour**
-- **Subtract 1 hour**
-- **Add 1 day**
-- **Subtract 1 day**
+Home Assistant does not provide a supported mechanism for a custom integration to silently modify an existing user's dashboard and insert a card into it. Therefore the card is automatically installed, loaded, registered, and available in the card picker, but adding it to an existing dashboard is still a dashboard UI action.
 
-They are unavailable unless holder access is configured and a session is active.
+## Updates
 
-## Installation
-
-### HACS
-
-1. Open **HACS** in Home Assistant.
-2. Open **Integrations**.
-3. Search for **EmlaLock**.
-4. Install or update the integration.
-5. Restart Home Assistant.
-6. Go to **Settings → Devices & services → Add integration** and search for **EmlaLock**.
-
-If the repository is not yet available in the HACS default list, add this repository as a custom repository:
-
-`https://github.com/walterz930/EmlaLock-hacs`
-
-## API
-
-The integration communicates with the EmlaLock API at:
-
-`https://api.emlalock.com`
-
-The API remains authoritative for validation, permissions, and errors.
+After a HACS update, restart Home Assistant so the updated integration and bundled card are loaded.
