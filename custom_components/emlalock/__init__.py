@@ -1,8 +1,11 @@
 from __future__ import annotations
 
 import re
+from pathlib import Path
 
 import voluptuous as vol
+from homeassistant.components import frontend
+from homeassistant.components.http import StaticPathConfig
 from homeassistant.config_entries import ConfigEntry
 from homeassistant.const import Platform
 from homeassistant.core import HomeAssistant, ServiceCall
@@ -13,6 +16,9 @@ from .const import CONF_API_KEY, CONF_HOLDER_API_KEY, CONF_USER_ID, DOMAIN
 from .coordinator import EmlaLockCoordinator
 
 PLATFORMS: list[Platform] = [Platform.SENSOR, Platform.BINARY_SENSOR, Platform.BUTTON]
+
+_CARD_URL = "/emlalock/emlalock-card.js"
+_CARD_FILE = Path(__file__).resolve().parents[2] / "www" / "emlalock-card.js"
 
 _SHORT_TIME_RE = re.compile(r"^(?:W\d+|D\d+|H\d+|M\d+|S\d+)+$", re.IGNORECASE)
 
@@ -73,6 +79,15 @@ TIME_ENDPOINTS_WITH_TEXT = {"add", "sub"}
 
 async def async_setup(hass: HomeAssistant, config):
     hass.data.setdefault(DOMAIN, {"entries": {}, "services_registered": False})
+
+    # Make the bundled Lovelace card available automatically. Users no longer
+    # need to add a dashboard resource or paste JavaScript/YAML for the card.
+    if _CARD_FILE.is_file():
+        await hass.http.async_register_static_paths(
+            [StaticPathConfig(_CARD_URL, str(_CARD_FILE), cache_headers=False)]
+        )
+        frontend.add_extra_js_url(hass, _CARD_URL)
+
     if not hass.data[DOMAIN]["services_registered"]:
 
         async def run_action(call: ServiceCall, endpoint: str, random: bool = False):
